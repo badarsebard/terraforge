@@ -1,13 +1,13 @@
 <!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+
 <script>
     import { providers } from "./store";
     export let resource;
 
     let schemas;
     let schema;
-    let blocks = {};
     let data  = resource.data();
     $: resource.data(data);
 
@@ -46,12 +46,6 @@
             }
         }
     }
-    // update config with blocks changes
-    $: {
-        for (const bt in blocks) {
-            data.tf.config[bt] = {}
-        }
-    }
 
     function addBlock(event) {
         let parent;
@@ -61,16 +55,23 @@
             }
         }
         if (parent) {
+            let blocks = data.tf.config.blocks;
             let bt = parent.value;
             blocks[bt] ??= []
             let l = blocks[bt].length;
-            let bt_attrs = Object.keys(schema.block_types.required[bt].block.attributes);
-            let bt_schema = {};
-            for (const a of bt_attrs) {
-                bt_schema[a] = null;
-            }
-            if (l < (schema.block_types[bt].max_items ? schema.block_types[bt].max_items : (schema.block_types[bt].nesting_mode === "single" ? 1 : Infinity))) {
-                blocks[bt] = blocks[bt].concat([bt_schema])
+
+            const nm = schema.block_types[bt].nesting_mode;
+            if (nm === "single") {
+                if (l < 1) {
+                    blocks[bt] = blocks[bt].concat([""])
+                }
+            } else if (nm === "list" || nm === "set") {
+                schema.block_types[bt].max_items ??= Infinity
+                if (l < schema.block_types[bt].max_items) {
+                    blocks[bt] = blocks[bt].concat([""])
+                }
+            } else if (nm === "map") {
+                // this is basically never used from what I can tell so it can be left until later to figure out
             }
         }
     }
@@ -83,8 +84,8 @@
     .dotted {
         border-top:1px dotted;
     }
-    .tree-row {
-        display: flex;
+    textarea {
+        font-family: SFMono-Regular,Consolas,"Liberation Mono",Menlo,Courier,monospace;
     }
 </style>
 
@@ -113,7 +114,7 @@
                 <div class="field">
                     <div class="control">
                         <label class="checkbox required">
-                            <input bind:checked={data.tf.config[attribute]} type="checkbox">
+                            <input bind:checked={data.tf.config.attributes[attribute]} type="checkbox">
                             {attribute}
                         </label>
                     </div>
@@ -121,7 +122,7 @@
             {:else}
                 <div class="field">
                     <div class="control">
-                        <input bind:value={data.tf.config[attribute]} class="input required" type="text" placeholder={attribute}>
+                        <input bind:value={data.tf.config.attributes[attribute]} class="input required" type="text" placeholder={attribute}>
                     </div>
                 </div>
             {/if}
@@ -136,26 +137,13 @@
                 </span>
             </button>
         </div>
-        {#each (blocks[block_type] ?? []) as _, i}
+        {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
             <hr class="dotted">
-            {#each Object.keys(schema.block_types.required[block_type].block.attributes) as attribute}
-                {#if schema.block_types.required[block_type].block.attributes.type === "bool"}
-                    <div class="field">
-                        <div class="control">
-                            <label class="checkbox required">
-                                <input bind:checked={blocks[block_type][i][attribute]} type="checkbox">
-                                {attribute}
-                            </label>
-                        </div>
-                    </div>
-                {:else}
-                    <div class="field">
-                        <div class="control">
-                            <input bind:value={data.tf.config[block_type+"."+attribute]} class="input required" type="text" placeholder={attribute}>
-                        </div>
-                    </div>
-                {/if}
-            {/each}
+            <div class="field">
+                <div class="control">
+                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea required"></textarea>
+                </div>
+            </div>
         {/each}
     {/each}
     <hr>
@@ -168,7 +156,7 @@
                 <div class="field">
                     <div class="control">
                         <label class="checkbox">
-                            <input bind:checked={data.tf.config[attribute]} type="checkbox">
+                            <input bind:checked={data.tf.config.attributes[attribute]} type="checkbox">
                             {attribute}
                         </label>
                     </div>
@@ -176,7 +164,7 @@
             {:else}
                 <div class="field">
                     <div class="control">
-                        <input bind:value={data.tf.config[attribute]} class="input" type="text" placeholder={attribute}>
+                        <input bind:value={data.tf.config.attributes[attribute]} class="input" type="text" placeholder={attribute}>
                     </div>
                 </div>
             {/if}
@@ -191,25 +179,12 @@
             </span>
             </button>
         </div>
-        {#each (blocks[block_type] ?? []) as _, i}
-            {#each Object.keys(schema.block_types.optional[block_type].block.attributes) as attribute}
-                {#if schema.block_types.optional[block_type].block.attributes.type === "bool"}
-                    <div class="field">
-                        <div class="control">
-                            <label class="checkbox required">
-                                <input bind:checked={blocks[block_type][i][attribute]} type="checkbox">
-                                {attribute}
-                            </label>
-                        </div>
-                    </div>
-                {:else}
-                    <div class="field">
-                        <div class="control">
-                            <input bind:value={data.tf.config[block_type+"."+attribute]} class="input required" type="text" placeholder={attribute}>
-                        </div>
-                    </div>
-                {/if}
-            {/each}
+        {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
+            <div class="field">
+                <div class="control">
+                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea"></textarea>
+                </div>
+            </div>
         {/each}
     {/each}
 </div>

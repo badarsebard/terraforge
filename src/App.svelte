@@ -59,7 +59,6 @@
         link.style.display = "none";
         link.href = URL.createObjectURL(file);
         link.download = file.name;
-        location.href = "data:application/json" + data;
         document.body.appendChild(link);
         link.click();
         setTimeout(() => {
@@ -87,7 +86,7 @@
             }
             cy.json(data);
             for (const node of data.elements.nodes) {
-                let n = cy.$id(node.id)
+                let n = cy.$id(node.data.id)
                 $resources.push(n);
             }
         }
@@ -100,21 +99,34 @@
     function exportHCL() {
         let hcl = ''
         for (const r of $resources) {
-            let d = r.data()
-            let st = d.tf.stanzaType === "resource" ? "resource" : "data"
+            let data = r.data()
+            let stanzaType = data.tf.stanzaType === "resource" ? "resource" : "data"
             hcl +=
-`${st} "${d.tf.type}" "${d.tf.stanza_name}" {${Object.keys(d.tf.config).map((key) => {
-    if (typeof d.tf.config[key] === "string") {
-        if (d.tf.config[key].startsWith("$")) {
+`${stanzaType} "${data.tf.type}" "${data.tf.stanza_name}" {${Object.keys(data.tf.config.attributes).map((key) => {
+    if (typeof data.tf.config.attributes[key] === "string") {
+        if (data.tf.config.attributes[key].startsWith("$")) {
             return `
-  ${key} = ${d.tf.config[key].slice(1)}`
+  ${key} = ${data.tf.config.attributes[key].slice(1)}`
         } else {
             return `
-  ${key} = "${d.tf.config[key]}"`
+  ${key} = "${data.tf.config.attributes[key]}"`
         }
     } else {
         return `
-  ${key} = ${d.tf.config[key]}`
+  ${key} = ${data.tf.config.attributes[key]}`
+    }
+}).join('')}${Object.keys(data.tf.config.blocks).map((key) => {
+    if (typeof data.tf.config.blocks[key] === "string") {
+        return `
+  ${key} ${data.tf.config.blocks[key].replace("$", "")}`
+    } else {
+        let retVar = ``;
+        for (const block of data.tf.config.blocks[key]) {
+            retVar += `
+
+  ${key} ${block.replace("$", "")}`
+        }
+        return retVar
     }
 }).join('')}
 }
@@ -138,40 +150,68 @@
     }
     $: parseDesignFile(design);
 
+    function pushMatches(matches, nodeIdMap, node, edgeIds, edges) {
+        for (const match of matches) {
+            let source = nodeIdMap[match[1]];
+            let edgeId = source+"|"+node.id();
+            let edge = {
+                group: 'edges',
+                data: {
+                    source: source,
+                    target: node.id()
+                }
+            };
+            if (!edgeIds.includes(edgeId)){
+                edgeIds.push(edgeId);
+                edges.push(edge);
+            }
+        }
+    }
+
     async function computeEdges(r) {
+        console.log(r);
         let edges = [];
         let edgeIds = [];
         let nodeIdMap = {};
+        const regexp = /\$(\w+\.\w+)/g;
         for (const node of r) {
             let data = node.data();
-            nodeIdMap[data.tf.type + "." + data.tf.stanza_name] = node.id();
+            if (data) {
+                nodeIdMap[data.tf.type + "." + data.tf.stanza_name] = node.id();
+            } else {
+                return
+            }
         }
         for (const node of r) {
             let data = node.data();
             let config = data.tf.config
-            for (const attr in config) {
-                if (typeof config[attr] !== 'boolean' && config[attr].startsWith("$")) {
-                    let ref;
-                    if (config[attr].startsWith("$data.")) {
-                        ref = config[attr].slice(6).split(".");
-                    } else {
-                        ref = config[attr].slice(1).split(".");
-                    }
-                    let s = nodeIdMap[ref[0] + "." + ref[1]];
-                    if (s) {
-                        let st = s+"|"+node.id()
-                        let e = {
-                            group: 'edges',
-                            data: {
-                                source: s,
-                                target: node.id()
-                            }
-                        };
-                        if (!edgeIds.includes(st)){
-                            edgeIds.push(st);
-                            edges.push(e);
+            for (const attr in config.attributes) {
+                const matches = [...config.attributes[attr].matchAll(regexp)];
+                pushMatches(matches, nodeIdMap, node, edgeIds, edges)
+            }
+            for (const block in config.blocks) {
+                switch (typeof config.blocks[block]) {
+                    case "string":
+                        const matches = [...config.blocks[block].matchAll(regexp)];
+                        pushMatches(matches, nodeIdMap, node, edgeIds, edges)
+                        break;
+                    case "object":
+                        switch (Array.isArray(config.blocks[block])) {
+                            case true:
+                                for (const blocki of config.blocks[block]) {
+                                    const matches = [...blocki.matchAll(regexp)];
+                                    pushMatches(matches, nodeIdMap, node, edgeIds, edges)
+                                }
+                                break;
+
+                            case false:
+                                for (const block_name in config.blocks[block]) {
+                                    const matches = [...config.blocks[block][block_name].matchAll(regexp)]
+                                    pushMatches(matches, nodeIdMap, node, edgeIds, edges)
+                                }
+                                break;
                         }
-                    }
+                        break;
                 }
             }
         }
@@ -185,7 +225,10 @@
                 provider: selected,
                 stanzaType: stanzaType,
                 type: event.target.innerText,
-                config: {},
+                config: {
+                    attributes: {},
+                    blocks: {}
+                },
                 stanza_name: ""
             }
         }
@@ -279,6 +322,7 @@
     .navbar-item img {
         max-height: 4rem;
     }
+
 </style>
 
 <nav class="navbar" role="navigation" aria-label="main navigation">
@@ -311,7 +355,10 @@
                     </a>
                 </div>
             </div>
-            <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-item" on:click={exportHCL}>
+                Export HCL
+            </a>
+            <!-- <div class="navbar-item has-dropdown is-hoverable">
                 <a class="navbar-link">
                     HCL
                 </a>
@@ -323,7 +370,7 @@
                         Export
                     </a>
                 </div>
-            </div>
+            </div> -->
         </div>
     </div>
 </nav>
