@@ -31,7 +31,6 @@
                 $providers[p] = {};
                 $providers[p]["resource_schemas"] = data.provider_schemas[pr].resource_schemas;
                 $providers[p]["data_source_schemas"] = data.provider_schemas[pr].data_source_schemas;
-
             }
             upload = false;
         }
@@ -169,7 +168,6 @@
     }
 
     async function computeEdges(r) {
-        console.log(r);
         let edges = [];
         let edgeIds = [];
         let nodeIdMap = {};
@@ -241,13 +239,14 @@
     }
 
     function tfName(ele) {
-        let d = ele.data();
-        let t = d.tf.type;
-        let n = d.tf.stanza_name
-        if (n === "") {
-            return t
+        let data = ele.data();
+        let type = data.tf.type;
+        let stanzaType = data.tf.stanzaType;
+        let stanzaName = data.tf.stanza_name;
+        if (stanzaName === "") {
+            return stanzaType === "resource" ? type : `data.${type}`
         } else {
-            return t + "." + n
+            return stanzaType === "resource" ? `${type}.${stanzaName}` : `data.${type}.${stanzaName}`
         }
     }
 
@@ -273,6 +272,12 @@
                         'curve-style': 'bezier',
                         'line-color': '#81007B',
                         'target-arrow-color': '#81007B'
+                    }
+                },
+                {
+                    selector: ':selected',
+                    style: {
+                        'background-color': 'blue'
                     }
                 }
             ]
@@ -314,12 +319,13 @@
     #cy {
         width: 100%;
         height: 100%;
-        top: 0px;
-        left: 0px;
+        top: 0;
+        left: 0;
     }
     .columns {
         max-height: 85vh;
         overflow: hidden;
+        min-height: 50vh;
     }
     .column {
         overflow: auto;
@@ -399,7 +405,7 @@
                     <input class="file-input" type="file" bind:files>
                     <span class="file-cta">
                         <span class="file-label">
-                            Upload provider schemas
+                            Upload providers schema
                         </span>
                     </span>
                 </label>

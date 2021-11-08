@@ -21,6 +21,7 @@
                 delete schema.attributes[attribute]
             }
         }
+        schema.attributes ??= {};
         for (const block_type in schema.block_types) {
             if (block_type === "required" || block_type === "optional") {
                 continue
@@ -31,6 +32,7 @@
                 }
             }
         }
+        schema.block_types ??= {};
         schema.block_types["required"] = {};
         schema.block_types["optional"] = {};
         for (const block_type in schema.block_types) {
