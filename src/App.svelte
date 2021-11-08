@@ -260,15 +260,19 @@
                     selector: 'node',
                     style: {
                         label: tfName,
-                        "text-halign": 'center',
-                        "text-valign": 'bottom',
+                        'text-halign': 'center',
+                        'text-valign': 'bottom',
+                        'background-color': '#81007B',
+                        'color': '#aaa'
                     }
                 },
                 {
                     selector: 'edge',
                     style: {
                         'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier'
+                        'curve-style': 'bezier',
+                        'line-color': '#81007B',
+                        'target-arrow-color': '#81007B'
                     }
                 }
             ]
@@ -305,7 +309,8 @@
 
     onDestroy(unsubscribe);
 </script>
-<style>
+<style global lang="scss">
+    @import "main.scss";
     #cy {
         width: 100%;
         height: 100%;
@@ -322,7 +327,10 @@
     .navbar-item img {
         max-height: 4rem;
     }
-
+    table {
+      border-radius: 12px;
+      -moz-border-radius: 12px;
+    }
 </style>
 
 <nav class="navbar" role="navigation" aria-label="main navigation">

@@ -98,7 +98,7 @@
     <div class="level-right ml-4">
         <div class="field level-item">
             <div class="control">
-                <input bind:value={data.tf.stanza_name} class="input is-small" type="text" placeholder="name">
+                <input bind:value={data.tf.stanza_name} class="input is-small is-rounded" type="text" placeholder="name">
             </div>
         </div>
     </div>
@@ -122,7 +122,7 @@
             {:else}
                 <div class="field">
                     <div class="control">
-                        <input bind:value={data.tf.config.attributes[attribute]} class="input required" type="text" placeholder={attribute}>
+                        <input bind:value={data.tf.config.attributes[attribute]} class="input required is-rounded" type="text" placeholder={attribute}>
                     </div>
                 </div>
             {/if}
@@ -141,7 +141,7 @@
             <hr class="dotted">
             <div class="field">
                 <div class="control">
-                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea required"></textarea>
+                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea required is-rounded"></textarea>
                 </div>
             </div>
         {/each}
@@ -164,7 +164,7 @@
             {:else}
                 <div class="field">
                     <div class="control">
-                        <input bind:value={data.tf.config.attributes[attribute]} class="input" type="text" placeholder={attribute}>
+                        <input bind:value={data.tf.config.attributes[attribute]} class="input is-rounded" type="text" placeholder={attribute}>
                     </div>
                 </div>
             {/if}
@@ -182,7 +182,7 @@
         {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
             <div class="field">
                 <div class="control">
-                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea"></textarea>
+                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea is-rounded"></textarea>
                 </div>
             </div>
         {/each}
