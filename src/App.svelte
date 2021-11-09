@@ -11,6 +11,9 @@
     import klay from 'cytoscape-klay';
     import {options} from "./klay"
 
+    import unsavedInputPreventNavigation from "./prevent_navigation";
+    const { unsaved, action } = unsavedInputPreventNavigation();
+
     cytoscape.use(klay);
     let cy;
 
@@ -64,6 +67,7 @@
             URL.revokeObjectURL(link.href);
             link.parentNode.removeChild(link);
         }, 0);
+        $unsaved = false;
     }
     function loadDesign() {
         let inp = document.getElementById("file-input");
@@ -132,7 +136,6 @@
 
 `
         }
-        console.log(hcl);
         let file = new File([hcl], "terraforge.tf", {
             type: "text/plain",
         });
@@ -386,13 +389,21 @@
                 </div>
             </div> -->
         </div>
+        <div class="navbar-end">
+            <div class="navbar-item">
+                <span class="icon is-large">
+                  <a href="https://github.com/badarsebard/terraforge"><i class="fab fa-github fa-2x"></i></a>
+                </span>
+            </div>
+        </div>
     </div>
 </nav>
 
+<div use:action>
 <div class="columns m-4">
     {#if editorOn}
         <div class="column is-narrow">
-            <Editor stanzaType={stanzaType} resource={editNode}/>
+            <Editor stanzaType={stanzaType} resource={editNode} bind:cy={cy} bind:editorOn={editorOn}/>
         </div>
     {/if}
     <div class="column">
@@ -462,3 +473,4 @@
     </div>
 </div>
 <input id="file-input" type="file" style="display: none;" bind:files={design} />
+</div>

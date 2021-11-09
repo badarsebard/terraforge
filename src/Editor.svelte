@@ -4,7 +4,11 @@
 
 <script>
     import { providers } from "./store";
+    import {resources} from "./store";
+
+    export let cy;
     export let resource;
+    export let editorOn;
 
     let schemas;
     let schema;
@@ -77,6 +81,17 @@
             }
         }
     }
+
+    function deleteResource(event) {
+        for (let i = 0; i < $resources.length; i++) {
+            if (resource === $resources[i]) {
+                $resources.splice(i, 1);
+                cy.remove(`#${resource.id()}`);
+                editorOn = false;
+                break;
+            }
+        }
+    }
 </script>
 
 <style>
@@ -102,6 +117,13 @@
             <div class="control">
                 <input bind:value={data.tf.stanza_name} class="input is-small is-rounded" type="text" placeholder="name">
             </div>
+        </div>
+        <div class="level-item">
+            <button class="button is-pulled-right level-right is-small" on:click={deleteResource}>
+                <span class="icon has-text-danger">
+                    <i class="fas fa-times-circle"></i>
+                </span>
+            </button>
         </div>
     </div>
 </div>

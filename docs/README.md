@@ -14,11 +14,11 @@ and view the relationships between the resources before having to write any HCL.
 single HCL Terraform configuration file.
 
 ## Get started
-
+### Running the App
 Install the dependencies...
 
 ```bash
-cd svelte-app
+cd terraforge
 npm install
 ```
 
@@ -30,37 +30,28 @@ npm run dev
 
 Navigate to [localhost:5000](http://localhost:5000). You should see the app running.
 
-## Deploying to the web
+### Using the App
+To get started right away you can download the [providers schema](https://raw.githubusercontent.com/badarsebard/terraforge/main/contrib/core_providers.json) for the core Terraform providers from the contrib
+directory of the project. 
+- Upload this file using the `Upload providers schema` button in the app. 
+- Select a provider from the dropdown and choose either resource or data source radio buttons. 
+- Once the file is uploaded and the inputs selected you will see a list of resources on the right-hand side of the page. 
+- Double-click an entry to add a node of that type to the graph in the center of the page. 
+- Zoom using mouse scrolling and pan by click, hold, and dragging the mouse. 
+- Click a node to open a pane on the left-hand side of the window where the name and attributes of the node can be 
+modified. 
+- References between nodes can be made by entering `$type.name.attributes` in the attribute; e.g.`$aws_lb.front_end.arn`.
+- After creating and editing some resources, export the Terraform configuration by clicking `Export HCL` in the navbar.
 
-### With [Vercel](https://vercel.com)
+## Documentation
+Learn about the [Providers Schema](providers_schema.md) and how to manage different kinds of resources from different 
+providers.
 
-Install `vercel` if you haven't already:
+See all the details about the [Editor](editor.md) and its components.
 
-```bash
-npm install -g vercel
-```
+Save and load work using [Design](design.md) import and export.
 
-Then, from within your project folder:
-
-```bash
-cd public
-vercel deploy --name my-project
-```
-
-### With [surge](https://surge.sh/)
-
-Install `surge` if you haven't already:
-
-```bash
-npm install -g surge
-```
-
-Then, from within your project folder:
-
-```bash
-npm run build
-surge public my-project.surge.sh
-```
+Turn your graph into a [Terraform Config](hcl.md) by exporting HCL.
 
 # License
 The majority of this project is licensed under the [Mozilla Public License, v. 2.0](https://mozilla.org/MPL/2.0/). The
