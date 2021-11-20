@@ -1,6 +1,6 @@
 {
-  "name": "svelte-app",
-  "version": "1.0.0",
+  "name": "terraforge",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "rollup -c",

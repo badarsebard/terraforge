@@ -107,24 +107,20 @@
 </style>
 
 <div class="level">
-    <div class="level-left">
-        <h1 class="level-item">
-            {data.tf.type}
-        </h1>
-    </div>
-    <div class="level-right ml-4">
-        <div class="field level-item">
-            <div class="control">
-                <input bind:value={data.tf.stanza_name} class="input is-small is-rounded" type="text" placeholder="name">
-            </div>
+    <h1 class="level-item m-1">
+        {data.tf.type}
+    </h1>
+    <div class="field level-item m-1">
+        <div class="control">
+            <input bind:value={data.tf.stanza_name} class="input is-small is-rounded" type="text" placeholder="name">
         </div>
-        <div class="level-item">
-            <button class="button is-pulled-right level-right is-small" on:click={deleteResource}>
+    </div>
+    <div class="level-item">
+        <button class="button is-pulled-right level-right is-small" on:click={deleteResource}>
                 <span class="icon has-text-danger">
                     <i class="fas fa-times-circle"></i>
                 </span>
-            </button>
-        </div>
+        </button>
     </div>
 </div>
 <div>

@@ -1,15 +1,16 @@
 <!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+
 <script>
     import Editor from "./Editor.svelte";
-    import {providers} from "./store";
-    import {resources} from "./store";
-    import {onDestroy} from 'svelte';
+    import { providers } from "./store";
+    import { resources } from "./store";
+    import { onDestroy } from 'svelte';
 
     import cytoscape from 'cytoscape';
     import klay from 'cytoscape-klay';
-    import {options} from "./klay"
+    import { options } from "./klay"
 
     import unsavedInputPreventNavigation from "./prevent_navigation";
     const { unsaved, action } = unsavedInputPreventNavigation();
@@ -17,9 +18,50 @@
     cytoscape.use(klay);
     let cy;
 
+    function generateUID() {
+        let firstPart = (Math.random() * 46656) | 0;
+        let secondPart = (Math.random() * 46656) | 0;
+        firstPart = ("000" + firstPart.toString(36)).slice(-3);
+        secondPart = ("000" + secondPart.toString(36)).slice(-3);
+        return firstPart + secondPart;
+    }
+    async function response2array(r) {
+        let ret = await r.blob();
+        ret = await ret.text();
+        ret = await ret.trim();
+        ret = await ret.split("\n")
+        return ret
+    }
+    let providerChoices = {};
+    (async function getProviders() {
+        let official = await fetch("https://raw.githubusercontent.com/badarsebard/terraform-schemas/main/schemas/manifest.official.txt").then(r => response2array(r));
+        let partner = await fetch("https://raw.githubusercontent.com/badarsebard/terraform-schemas/main/schemas/manifest.partner.txt").then(r => response2array(r));
+        let community = await fetch("https://raw.githubusercontent.com/badarsebard/terraform-schemas/main/schemas/manifest.community.txt").then(r => response2array(r));
+        for (const p of official) {
+            let pId = generateUID();
+            let gitName = p.replace("/", "_")
+            let name = p.split("/")[1]
+            providerChoices[pId] = {gitname: gitName, type: "official", fullname: p, name: name};
+        }
+        for (const p of partner) {
+            let pId = generateUID();
+            let gitName = p.replace("/", "_")
+            let name = p.split("/")[1]
+            providerChoices[pId] = {gitname: gitName, type: "partner", fullname: p, name: name};
+        }
+        for (const p of community) {
+            let pId = generateUID();
+            let gitName = p.replace("/", "_")
+            let name = p.split("/")[1]
+            providerChoices[pId] = {gitname: gitName, type: "community", fullname: p, name: name};
+        }
+        // providerChoices.sort((f, s) => {if (f.name < s.name){return -1} else {return 1}})
+    })();
+
+    let selectedProviders = [];
     let design;
     let files;
-    function readFile(f) {
+    function readSchema(f) {
         if (!f) {
             return
         }
@@ -27,31 +69,66 @@
 
         fr.onload = function (e) {
             $providers = {};
+            selected = undefined;
             let data = JSON.parse(e.target.result);
-            for (const pr in data.provider_schemas) {
-                let p = pr.split("/");
-                p = p[p.length - 1];
-                $providers[p] = {};
-                $providers[p]["resource_schemas"] = data.provider_schemas[pr].resource_schemas;
-                $providers[p]["data_source_schemas"] = data.provider_schemas[pr].data_source_schemas;
-            }
+            parseProviderSchema(data);
             upload = false;
         }
 
         fr.readAsText(files.item(0));
     }
-    $: readFile(files);
+    $: readSchema(files);
+
+    function parseProviderSchema(data) {
+        for (const pr in data.provider_schemas) {
+            let p = pr.replace("registry.terraform.io/", "");
+            $providers[p] = {};
+            $providers[p]["resource_schemas"] = data.provider_schemas[pr].resource_schemas;
+            $providers[p]["data_source_schemas"] = data.provider_schemas[pr].data_source_schemas;
+        }
+    }
     function reupload(e) {
         upload = true;
     }
 
     let upload = true;
+
+    async function runWizard(e) {
+        wizard = "is-active"
+    }
+
     let editorOn = false;
     let editNode;
     let filter = "";
+    let pfilter = "";
+    let ptypes = [];
     let selected;
     let stanzaType
+    let wizard = "";
 
+    async function setProviders() {
+        $providers = {};
+        selected = undefined;
+        // create json frame
+        let data = {
+            format_version: "0.2",
+            provider_schemas: {}
+        }
+        // iterate through selected providers
+        for (const p of selectedProviders) {
+            // grab the schema from github
+            let pChoice = providerChoices[p]
+            let schema = await fetch(`https://raw.githubusercontent.com/badarsebard/terraform-schemas/main/schemas/${pChoice.type}/${pChoice.gitname}.json`).then(r => r.json())
+            // attach to frame
+            data.provider_schemas[`registry.terraform.io/${pChoice.fullname}`] = schema.provider_schemas[`registry.terraform.io/${pChoice.fullname}`];
+        }
+        parseProviderSchema(data);
+        wizard = "";
+    }
+    function uploadProvider() {
+        let inp = document.getElementById("provider-input");
+        inp.click();
+    }
     function saveDesign() {
         let data = JSON.stringify(cy.json());
         let file = new File([data], "terraforge.json", {
@@ -70,7 +147,7 @@
         $unsaved = false;
     }
     function loadDesign() {
-        let inp = document.getElementById("file-input");
+        let inp = document.getElementById("design-input");
         inp.click();
     }
     function parseDesignFile(f) {
@@ -328,17 +405,82 @@
     .columns {
         max-height: 85vh;
         overflow: hidden;
+    }
+    .tall-columns {
         min-height: 50vh;
     }
     .column {
         overflow: auto;
     }
     .navbar-item img {
-        max-height: 4rem;
+      max-height: 4rem;
     }
     table {
       border-radius: 12px;
       -moz-border-radius: 12px;
+    }
+    .level {
+      align-items: end;
+    }
+
+    .col {
+      flex: 1 2 33.33333%;
+      white-space: nowrap;
+    }
+    div.column.is-flex::after {
+      content: '';
+      flex-grow: 1000000000;
+    }
+
+    /* Tooltip container */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
+    }
+
+    /* Tooltip text */
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      background-color: black;
+      color: #fff;
+      text-align: center;
+      padding: 5px 0;
+      border-radius: 6px;
+
+      /* Position the tooltip text - see examples below! */
+      position: absolute;
+      z-index: 1;
+    }
+
+    /* Show the tooltip text when you mouse over the tooltip container */
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+    }
+
+    .tooltip-right {
+      top: -5px;
+      left: 125%;
+    }
+
+    .tooltip .tooltiptext::after {
+      content: " ";
+      position: absolute;
+      top: 50%;
+      right: 100%; /* To the left of the tooltip */
+      margin-top: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent black transparent transparent;
+    }
+
+    .tooltip .tooltiptext {
+      opacity: 0;
+      transition: opacity 1s;
+    }
+
+    .tooltip:hover .tooltiptext {
+      opacity: 1;
     }
 </style>
 
@@ -356,9 +498,19 @@
 
     <div id="navbar" class="navbar-menu">
         <div class="navbar-start">
-            <a class="navbar-item" on:click={reupload}>
-                Upload Providers Schema
-            </a>
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">
+                    Providers
+                </a>
+                <div class="navbar-dropdown">
+                    <a class="navbar-item" on:click={runWizard}>
+                        Wizard
+                    </a>
+                    <a class="navbar-item" on:click={uploadProvider}>
+                        Upload Manually
+                    </a>
+                </div>
+            </div>
             <div class="navbar-item has-dropdown is-hoverable">
                 <a class="navbar-link">
                     Design
@@ -400,7 +552,7 @@
 </nav>
 
 <div use:action>
-<div class="columns m-4">
+<div class="columns tall-columns m-4">
     {#if editorOn}
         <div class="column is-narrow">
             <Editor stanzaType={stanzaType} resource={editNode} bind:cy={cy} bind:editorOn={editorOn}/>
@@ -410,19 +562,7 @@
         <div id="cy"></div>
     </div>
     <div class="column is-narrow">
-        {#if (!files || upload)}
-            <div class="file">
-                <label class="file-label">
-                    <input class="file-input" type="file" bind:files>
-                    <span class="file-cta">
-                        <span class="file-label">
-                            Upload providers schema
-                        </span>
-                    </span>
-                </label>
-            </div>
-        {/if}
-        {#if files}
+        {#if $providers}
             <div class="table-container">
                 <table class="table is-hoverable">
                     <thead>
@@ -433,7 +573,7 @@
                             </div>
                             <div class="select is-inline is-pulled-right is-rounded">
                                 <select bind:value={selected}>
-                                    {#each Object.keys($providers) as provider, i}
+                                    {#each Object.keys($providers) as provider}
                                         <option value={provider}>{provider}</option>
                                     {/each}
                                 </select>
@@ -472,5 +612,73 @@
         {/if}
     </div>
 </div>
-<input id="file-input" type="file" style="display: none;" bind:files={design} />
+<input id="design-input"   type="file" style="display: none;" bind:files={design} />
+<input id="provider-input" type="file" style="display: none;" bind:files>
+</div>
+<div class="modal {wizard}">
+    <div on:click={() => wizard = ""} class="modal-background"></div>
+    <div class="modal-content">
+        <div class="box">
+            <div class="columns">
+                <div class="column">
+                    <div class="level">
+                        <div class="level-item" style="display: block;">
+                            <label class="label">Filters</label>
+                            <div class="control">
+                                <input bind:value={pfilter} class="input control is-rounded" type="text">
+                            </div>
+                        </div>
+                        <div class="level-item">
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input type="checkbox" bind:group={ptypes} value="official">
+                                    Official
+                                </label>
+                            </div>
+                        </div>
+                        <div class="level-item">
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input type="checkbox" bind:group={ptypes} value="partner">
+                                    Partner
+                                </label>
+                            </div>
+                        </div>
+                        <div class="level-item">
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input type="checkbox" bind:group={ptypes} value="community">
+                                    Community
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="columns">
+                <div class="column is-flex is-flex-wrap-wrap is-justify-content-flex-start">
+                    {#each Object.keys(providerChoices) as pId}
+                        {#if (providerChoices[pId].name.includes(pfilter) && pfilter.length > -1 && ptypes.includes(providerChoices[pId].type))}
+                            <div class="control col is-inline-flex">
+                                <label class="checkbox is-inline-flex tooltip">
+                                    <input type="checkbox" bind:group={selectedProviders} value={pId} class="is-inline-flex mr-1">
+                                    {providerChoices[pId].name}
+                                    <span class="tooltiptext tooltip-right">{providerChoices[pId].fullname}</span>
+                                </label>
+                            </div>
+                        {/if}
+                    {/each}
+                </div>
+            </div>
+            <hr class="has-background-grey-light">
+            <div class="columns">
+                <div class="column">
+                    <div class="control is-pulled-right">
+                        <button class="button is-primary" on:click={setProviders}>Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button on:click={() => wizard = ""} class="modal-close is-large" aria-label="close"></button>
 </div>
