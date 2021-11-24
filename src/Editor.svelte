@@ -3,20 +3,15 @@
    - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
 
 <script>
-    import { providers } from "./store";
-    import {resources} from "./store";
-
-    export let cy;
-    export let resource;
-    export let editorOn;
+    import { cy, providers, resources, editorOn, editNode } from "./store";
 
     let schemas;
     let schema;
-    let data  = resource.data();
-    $: resource.data(data);
+    let data  = $editNode.data();
+    $: $editNode.data(data);
 
     $: {
-        data = resource.data();
+        data = $editNode.data();
         schemas = {...$providers[data.tf.provider]};
         schema = schemas[data.tf.stanzaType+"_schemas"][data.tf.type].block;
 
@@ -84,10 +79,10 @@
 
     function deleteResource(event) {
         for (let i = 0; i < $resources.length; i++) {
-            if (resource === $resources[i]) {
+            if ($editNode === $resources[i]) {
                 $resources.splice(i, 1);
-                cy.remove(`#${resource.id()}`);
-                editorOn = false;
+                $cy.remove(`#${$editNode.id()}`);
+                editorOn.set(false);
                 break;
             }
         }

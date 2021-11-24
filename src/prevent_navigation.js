@@ -1,7 +1,13 @@
-import { writable, get } from "svelte/store";
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+import { unsaved } from "./store";
+import { get } from "svelte/store";
 
 export default function (eventName = "input", message = "Changes you made may not be saved. Are you sure?") {
-    const unsaved = writable(false);
     // the action
     function action(node, params) {
         function markUnsaved(e) {
@@ -32,5 +38,5 @@ export default function (eventName = "input", message = "Changes you made may no
             },
         };
     }
-    return { unsaved, action };
+    return { action };
 }

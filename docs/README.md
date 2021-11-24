@@ -56,6 +56,8 @@ Save and load work using [design](design.md) import and export.
 
 Turn your graph into a [Terraform config](hcl.md) by exporting HCL.
 
+See the [roadmap](roadmap.md) for a list of planned features.
+
 # License
 The majority of this project is licensed under the [Mozilla Public License, v. 2.0](https://mozilla.org/MPL/2.0/). The
 `contrib/` directory and its contents are licensed under the [MIT](https://www.mit.edu/~amini/LICENSE.md) license. Any

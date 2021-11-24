@@ -7,3 +7,7 @@
 import { writable } from 'svelte/store';
 export let resources = writable([]);
 export let providers = writable({});
+export let unsaved = writable(false);
+export let editNode = writable();
+export let editorOn = writable(false);
+export let cy = writable();
