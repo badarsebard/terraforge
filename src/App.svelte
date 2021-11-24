@@ -224,9 +224,16 @@
                     HCL
                 </a>
                 <div class="navbar-dropdown">
-                    <a class="navbar-item" on:click={() => document.getElementById("hcl-input").click()}>
-                        Import
-                    </a>
+                    {#if Object.keys($providers).length === 0}
+                        <a class="navbar-item tooltip" disabled>
+                            Import
+                            <span class="tooltiptext tooltip-right">Provider configuration required for import</span>
+                        </a>
+                    {:else}
+                        <a class="navbar-item" on:click={() => document.getElementById("hcl-input").click()}>
+                            Import
+                        </a>
+                    {/if}
                     <a class="navbar-item" on:click={exportHCL}>
                         Export
                     </a>
