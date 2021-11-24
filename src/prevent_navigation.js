@@ -9,8 +9,8 @@ import { get } from "svelte/store";
 
 export default function (eventName = "input", message = "Changes you made may not be saved. Are you sure?") {
     // the action
-    function action(node, params) {
-        function markUnsaved(e) {
+    function action(node) {
+        function markUnsaved() {
             unsaved.set(true);
         }
         function checkNavigation(e) {

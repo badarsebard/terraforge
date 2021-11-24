@@ -81,7 +81,7 @@
             $cy = startCy();
             cyStarted = true;
             $cy.layout(options).run();
-            unsubscribe = resources.subscribe(value => {
+            unsubscribe = resources.subscribe(() => {
                 $cy.layout(options).run();
             });
         }

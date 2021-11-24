@@ -1,7 +1,7 @@
-import {createResource, tfName} from "./utils";
-import { resources, cy, providers } from "./store";
+import { createResource } from "./utils";
+import { resources, providers } from "./store";
 
-export function exportHCL(evt) {
+export function exportHCL() {
     let hcl = ''
     let res;
     resources.subscribe(value => res = value);

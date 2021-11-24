@@ -77,7 +77,7 @@
         }
     }
 
-    function deleteResource(event) {
+    function deleteResource() {
         for (let i = 0; i < $resources.length; i++) {
             if ($editNode === $resources[i]) {
                 $resources.splice(i, 1);
