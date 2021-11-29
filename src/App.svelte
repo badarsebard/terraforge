@@ -4,7 +4,7 @@
 
 <script>
     import Editor from "./Editor.svelte";
-    import { providers, resources, editorOn, cy } from "./store";
+    import { providerSchemas, resources, editorOn, editNode, cy } from "./store";
     import { onDestroy } from 'svelte';
 
     import cytoscape from 'cytoscape';
@@ -14,12 +14,15 @@
     import { exportHCL, importHCL } from "./hcl";
     import { parseDesignFile } from "./design";
     import { startCy, saveDesign, createResource } from "./utils";
+    import { tfSchema } from "./tfSchema";
 
     import unsavedInputPreventNavigation from "./prevent_navigation";
     const { action } = unsavedInputPreventNavigation();
 
-    let providerChoices = {};
-    let selectedProviders = [];
+    let providerChoices = {};        // all potential providers from the terraform-schemas repo
+    let selectedProviders = [];      // the providers selected through the wizard
+    // providerSchemas               // the terraform schemas of the selected providers
+    let providerConfigurations = {}; // the provider configurations for the selected providers
     let design;
     let files;
     let hclConfig;
@@ -27,7 +30,7 @@
     let pfilter = "";
     let ptypes = [];
     let selected;
-    let stanzaType
+    let stanzaType;
     let wizard = "";
     let cyStarted = false;
     let unsubscribe;
@@ -43,7 +46,12 @@
         let fr = new FileReader();
 
         fr.onload = function (e) {
-            $providers = {};
+            $providerSchemas = {};
+            $providerSchemas["terraform"] = {
+                provider: {
+                    block: tfSchema
+                }
+            }
             selected = undefined;
             let data = JSON.parse(e.target.result);
             parseProviderSchema(data);
@@ -60,8 +68,32 @@
         setProviders(selected, selectedProviders, providerChoices)
     }
 
+    async function openProviderEditor() {
+        let providerNode = $cy.$id(selected);
+        if (providerNode.empty()) {
+            let r = {
+                type: 'provider',
+                tf: {
+                    provider: selected,
+                    stanzaType: 'provider',
+                    type: selected,
+                    config: {
+                        attributes: {},
+                        blocks: {}
+                    },
+                    stanzaName: ""
+                }
+            }
+            await createResource(r);
+            providerNode = $cy.$id(selected);
+        }
+        $editorOn = true;
+        $editNode = providerNode;
+    }
+
     function createResourceWrapper(event) {
         let r = {
+            type: stanzaType,
             tf: {
                 provider: selected,
                 stanzaType: stanzaType,
@@ -70,7 +102,7 @@
                     attributes: {},
                     blocks: {}
                 },
-                stanza_name: ""
+                stanzaName: ""
             }
         }
         createResource(r);
@@ -177,6 +209,14 @@
     .tooltip:hover .tooltiptext {
       opacity: 1;
     }
+
+    .is-clickable:hover {
+      color: #7a8288;
+    }
+    .is-clickable:active {
+      transform: scale(0.9);;
+    }
+
 </style>
 
 <nav class="navbar" role="navigation" aria-label="main navigation">
@@ -224,7 +264,7 @@
                     HCL
                 </a>
                 <div class="navbar-dropdown">
-                    {#if Object.keys($providers).length === 0}
+                    {#if Object.keys($providerSchemas).length === 0}
                         <a class="navbar-item tooltip" disabled>
                             Import
                             <span class="tooltiptext tooltip-right">Provider configuration required for import</span>
@@ -261,7 +301,7 @@
         <div id="cy"></div>
     </div>
     <div class="column is-narrow">
-        {#if $providers}
+        {#if $providerSchemas}
             <div class="table-container">
                 <table class="table is-hoverable">
                     <thead>
@@ -269,10 +309,11 @@
                         <th>
                             <div class="is-inline pr-4 is-size-4">
                                 Provider
+                                <i class="fas fa-cog is-clickable" on:click={openProviderEditor}></i>
                             </div>
                             <div class="select is-inline is-pulled-right is-rounded">
                                 <select bind:value={selected}>
-                                    {#each Object.keys($providers) as provider}
+                                    {#each Object.keys($providerSchemas) as provider}
                                         <option value={provider}>{provider}</option>
                                     {/each}
                                 </select>
@@ -296,8 +337,8 @@
                     </tr>
                     </thead>
                     <tbody>
-                    {#if (selected && stanzaType && $providers[selected][stanzaType+"_schemas"])}
-                        {#each Object.keys($providers[selected][stanzaType+"_schemas"]) as rt}
+                    {#if (selected && stanzaType && $providerSchemas[selected][stanzaType+"_schemas"])}
+                        {#each Object.keys($providerSchemas[selected][stanzaType+"_schemas"]) as rt}
                             {#if (rt.includes(filter))}
                                 <tr on:dblclick={createResourceWrapper}>
                                     <td>{rt}</td>

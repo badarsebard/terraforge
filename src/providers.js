@@ -4,7 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { providers } from "./store";
+import { providerSchemas } from "./store";
+import {tfSchema} from "./tfSchema";
 
 export async function getProviders(providerChoices) {
     let official = await fetch("https://raw.githubusercontent.com/badarsebard/terraform-schemas/main/schemas/manifest.official.txt").then(r => response2array(r));
@@ -47,9 +48,10 @@ async function response2array(r) {
 export function parseProviderSchema(data) {
     for (const pr in data.provider_schemas) {
         let p = pr.replace("registry.terraform.io/", "");
-        providers.update(n => {
+        providerSchemas.update(n => {
             let x = {...n};
             x[p] = {
+                provider: data.provider_schemas[pr].provider,
                 resource_schemas: data.provider_schemas[pr].resource_schemas,
                 data_source_schemas: data.provider_schemas[pr].data_source_schemas
             };
@@ -59,14 +61,20 @@ export function parseProviderSchema(data) {
 }
 
 export async function setProviders(s, sp, pc) {
-    providers.update(() => {return {}});
+    providerSchemas.set({
+        terraform: {
+            provider: {
+                block: tfSchema
+            }
+        }
+    });
     s = undefined;
     // create json frame
     let data = {
         format_version: "0.2",
         provider_schemas: {}
     }
-    // iterate through selected providers
+    // iterate through selected providerSchemas
     for (const p of sp) {
         // grab the schema from github
         let pChoice = pc[p]

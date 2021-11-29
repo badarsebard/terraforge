@@ -3,32 +3,50 @@
    - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
 
 <script>
-    import { cy, providers, resources, editorOn, editNode } from "./store";
+    import { cy, providerSchemas, resources, editorOn, editNode } from "./store";
 
     let schemas;
     let schema;
+    let requiredCount = 0;
+    let optionalCount = 0;
     let data  = $editNode.data();
     $: $editNode.data(data);
 
     $: {
         data = $editNode.data();
-        schemas = {...$providers[data.tf.provider]};
-        schema = schemas[data.tf.stanzaType+"_schemas"][data.tf.type].block;
-
+        schemas = {...$providerSchemas[data.tf.provider]};
+        let schemaKey;
+        if (data.tf.stanzaType === "resource") {
+            schemaKey = "resource_schemas";
+        } else if (data.tf.stanzaType === "data_source") {
+            schemaKey = "data_source_schemas";
+        } else if (data.tf.stanzaType === "provider") {
+            schemaKey = "provider"
+        }
+        if (schemaKey === 'provider') {
+            schema = schemas[schemaKey].block;
+        } else {
+            schema = schemas[schemaKey][data.tf.type].block;
+        }
         for (const attribute in schema.attributes) {
             if (schema.attributes[attribute].computed && !schema.attributes[attribute].optional) {
                 delete schema.attributes[attribute]
             }
         }
+
         schema.attributes ??= {};
-        for (const block_type in schema.block_types) {
-            if (block_type === "required" || block_type === "optional") {
+        schema.attributes["required"] = {};
+        schema.attributes["optional"] = {};
+        for (const attr in schema.attributes) {
+            if (attr === "required" || attr === "optional") {
                 continue
             }
-            for (const attr in schema.block_types[block_type].block.attributes) {
-                if (schema.block_types[block_type].block.attributes[attr].computed && !schema.block_types[block_type].block.attributes[attr].optional) {
-                    delete schema.block_types[block_type].block.attributes[attr]
-                }
+            if (schema.attributes[attr].optional) {
+                schema.attributes.optional[attr] = schema.attributes[attr];
+                optionalCount++
+            } else {
+                schema.attributes.required[attr] = schema.attributes[attr];
+                requiredCount++
             }
         }
         schema.block_types ??= {};
@@ -40,10 +58,10 @@
             }
             if (schema.block_types[block_type].min_items > 0) {
                 schema.block_types.required[block_type] = Object.assign({}, schema.block_types[block_type])
-                // blocks[block_type] = [];
+                requiredCount++
             } else {
                 schema.block_types.optional[block_type] = Object.assign({}, schema.block_types[block_type])
-                // blocks[block_type] = [];
+                optionalCount++
             }
         }
     }
@@ -99,33 +117,38 @@
     textarea {
         font-family: SFMono-Regular,Consolas,"Liberation Mono",Menlo,Courier,monospace;
     }
+    input::placeholder {
+        text-align: right;
+    }
 </style>
 
-<div class="level">
+<div class="level-left">
     <h1 class="level-item m-1">
         {data.tf.type}
     </h1>
-    <div class="field level-item m-1">
-        <div class="control">
-            <input bind:value={data.tf.stanza_name} class="input is-small is-rounded" type="text" placeholder="name">
+    {#if data.type !== 'provider'}
+        <div class="field level-item m-1">
+            <div class="control">
+                <input bind:value={data.tf.stanzaName} class="input is-small is-rounded" type="text" placeholder="name">
+            </div>
         </div>
-    </div>
-    <div class="level-item">
-        <button class="button is-pulled-right level-right is-small" on:click={deleteResource}>
-                <span class="icon has-text-danger">
-                    <i class="fas fa-times-circle"></i>
-                </span>
-        </button>
-    </div>
+        <div class="level-item">
+            <button class="button is-pulled-right level-right is-small" on:click={deleteResource}>
+                    <span class="icon has-text-danger">
+                        <i class="fas fa-times-circle"></i>
+                    </span>
+            </button>
+        </div>
+    {/if}
 </div>
 <div>
     <hr>
-    <div>
-        <p class="has-text-weight-bold">Required</p><br>
-    </div>
-    {#each Object.keys(schema.attributes) as attribute}
-        {#if schema.attributes[attribute].optional === undefined || schema.attributes[attribute].optional === false}
-            {#if schema.attributes[attribute].type === "bool"}
+    {#if requiredCount > 0}
+        <div>
+            <p class="has-text-weight-bold">Required</p><br>
+        </div>
+        {#each Object.keys(schema.attributes.required) as attribute}
+            {#if schema.attributes.required[attribute].type === "bool"}
                 <div class="field">
                     <div class="control">
                         <label class="checkbox required">
@@ -136,37 +159,38 @@
                 </div>
             {:else}
                 <div class="field">
+                    <label class="label">{attribute}</label>
                     <div class="control">
-                        <input bind:value={data.tf.config.attributes[attribute]} class="input required is-rounded" type="text" placeholder={attribute}>
+                        <input bind:value={data.tf.config.attributes[attribute]} class="input required is-rounded" type="text">
                     </div>
                 </div>
             {/if}
-        {/if}
-    {/each}
-    {#each Object.keys(schema.block_types.required) as block_type}
-        <div class="level">
-            <p class="is-italic level-left">{block_type}</p>
-            <button class="button is-pulled-right level-right" on:click={addBlock} value={block_type}>
-                <span class="icon has-text-success">
-                    <i class="fas fa-plus-circle"></i>
-                </span>
-            </button>
-        </div>
-        {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
-            <hr class="dotted">
-            <div class="field">
-                <div class="control">
-                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea required is-rounded"></textarea>
-                </div>
-            </div>
         {/each}
-    {/each}
-    <hr>
-    <div>
-        <p class="has-text-weight-bold">Optional</p><br>
-    </div>
-    {#each Object.keys(schema.attributes) as attribute}
-        {#if schema.attributes[attribute].optional}
+        {#each Object.keys(schema.block_types.required) as block_type}
+            <div class="level">
+                <p class="is-italic level-left">{block_type}</p>
+                <button class="button is-pulled-right level-right" on:click={addBlock} value={block_type}>
+                    <span class="icon has-text-success">
+                        <i class="fas fa-plus-circle"></i>
+                    </span>
+                </button>
+            </div>
+            {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
+                <hr class="dotted">
+                <div class="field">
+                    <div class="control">
+                        <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea required is-rounded"></textarea>
+                    </div>
+                </div>
+            {/each}
+        {/each}
+        <hr>
+    {/if}
+    {#if optionalCount > 0}
+        <div>
+            <p class="has-text-weight-bold">Optional</p><br>
+        </div>
+        {#each Object.keys(schema.attributes.optional) as attribute}
             {#if schema.attributes[attribute].type === "bool"}
                 <div class="field">
                     <div class="control">
@@ -178,28 +202,29 @@
                 </div>
             {:else}
                 <div class="field">
+                    <label class="label">{attribute}</label>
                     <div class="control">
-                        <input bind:value={data.tf.config.attributes[attribute]} class="input is-rounded" type="text" placeholder={attribute}>
+                        <input bind:value={data.tf.config.attributes[attribute]} class="input is-rounded" type="text">
                     </div>
                 </div>
             {/if}
-        {/if}
-    {/each}
-    {#each Object.keys(schema.block_types.optional) as block_type}
-        <div class="level">
-            <p class="is-italic level-left">{block_type}</p>
-            <button class="button is-pulled-right level-right" on:click={addBlock} value={block_type}>
-            <span class="icon has-text-success">
-                <i class="fas fa-plus-circle"></i>
-            </span>
-            </button>
-        </div>
-        {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
-            <div class="field">
-                <div class="control">
-                    <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea is-rounded"></textarea>
-                </div>
-            </div>
         {/each}
-    {/each}
+        {#each Object.keys(schema.block_types.optional) as block_type}
+            <div class="level">
+                <p class="is-italic level-left">{block_type}</p>
+                <button class="button is-pulled-right level-right" on:click={addBlock} value={block_type}>
+                <span class="icon has-text-success">
+                    <i class="fas fa-plus-circle"></i>
+                </span>
+                </button>
+            </div>
+            {#each (data.tf.config.blocks[block_type] ?? []) as _, i}
+                <div class="field">
+                    <div class="control">
+                        <textarea bind:value={data.tf.config.blocks[block_type][i]} class="textarea is-rounded"></textarea>
+                    </div>
+                </div>
+            {/each}
+        {/each}
+    {/if}
 </div>

@@ -5,8 +5,15 @@
  */
 
 import { writable } from 'svelte/store';
+import {tfSchema} from "./tfSchema";
 export let resources = writable([]);
-export let providers = writable({});
+export let providerSchemas = writable({
+    terraform: {
+        provider: {
+            block: tfSchema
+        }
+    }
+});
 export let unsaved = writable(false);
 export let editNode = writable();
 export let editorOn = writable(false);
