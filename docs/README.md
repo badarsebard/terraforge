@@ -1,4 +1,3 @@
-# Terraforge
 Terraforge is an application for generating Terraform code visually. Users select providers and then add resources as 
 nodes to a graph that can be edited and arranged. Links between nodes appear automatically as the configuration of a
 node makes references to other nodes. When finished the design can be exported as Terraform HCL. The configuration will
