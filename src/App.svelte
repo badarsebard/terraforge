@@ -221,7 +221,7 @@
 
 <nav class="navbar" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
-        <a class="navbar-item" href="/">
+        <a class="navbar-item" href="https://www.terraforge.tf">
             <img src="/fulllogo_transparent_nobuffer.png" alt="Terraforge Logo">
         </a>
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
