@@ -4,16 +4,37 @@
 
 <script>
     import { cy, providerSchemas, resources, editorOn, editNode } from "./store";
+    import {options} from "./klay";
 
     let schemas;
     let schema;
     let requiredCount = 0;
     let optionalCount = 0;
+    let showMeta = false;
+
     let data  = $editNode.data();
     $: $editNode.data(data);
 
     $: {
         data = $editNode.data();
+        if (!data.count) {
+            data.count = 1;
+        }
+        if (data.count > 1) {
+            let cyObj;
+            cy.subscribe(value => cyObj = value);
+            for (let i = 0; i < data.count; i++) {
+                let childData = {...data};
+                delete childData.id;
+                childData.parent = data.id;
+                cyObj.add({
+                    group: "nodes",
+                    data: childData,
+                });
+            }
+            cyObj.layout(options).run();
+        }
+        console.log(data);
         schemas = {...$providerSchemas[data.tf.provider]};
         let schemaKey;
         if (data.tf.stanzaType === "resource") {
@@ -139,6 +160,53 @@
                     </span>
             </button>
         </div>
+    {/if}
+</div>
+<div>
+    {#if data.type !== 'provider'}
+        <hr>
+        <div>
+            <p class="has-text-weight-bold">Meta-Arguments
+                {#if showMeta}
+                    <span><i class="fas fa-minus-square" on:click={() => showMeta = !showMeta}></i></span>
+                {:else}
+                    <span><i class="fas fa-plus-square" on:click={() => showMeta = !showMeta}></i></span>
+                {/if}
+            </p>
+            <br>
+        </div>
+        {#if showMeta}
+            <div class="field">
+                <label class="label">Count</label>
+                <div class="control">
+                    <input class="input is-rounded" bind:value={data.count} type="number" min="1">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">For Each</label>
+                <div class="control">
+                    <input class="input is-rounded" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Provider</label>
+                <div class="control">
+                    <input class="input is-rounded" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Depends On</label>
+                <div class="control">
+                    <input class="input is-rounded" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Lifecycle</label>
+                <div class="control">
+                    <input class="input is-rounded" type="text">
+                </div>
+            </div>
+        {/if}
     {/if}
 </div>
 <div>
