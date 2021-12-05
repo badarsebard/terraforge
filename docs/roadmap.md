@@ -5,7 +5,7 @@ Below is a list of features of Terraform that are currently unsupported and _may
 - ~~Configure the `terraform` block~~
 - ~~Declare and set variables~~
 - ~~Declare and set outputs~~
-- ~~Declare and set locals~~
+- ~~Declare and set locals~~ 
 - Support interpolation in strings
 - Support comments
 - Evaluate expressions and functions
