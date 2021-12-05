@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 20211204.1
+### Added
+- Users can now add, set, remove, import, and export Terraform vairables, outputs, and locals
+### Changed
+- Made some minor changes to improve accessibility
+
 ## 20211128.1
 Initialize changelog
 ### Added

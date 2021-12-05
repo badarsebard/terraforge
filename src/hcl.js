@@ -2,14 +2,23 @@ import {
     computeEdges,
     createProviderBlockResource,
     createResourceOrDataBlockResource,
-    createTerraformBlockResource
+    createTerraformBlockResource,
+    createVariableResource,
+    createOutputResource,
+    addLocalResource
 } from "./utils";
-import { resources, cy } from "./store";
+import {resources, cy, hclVariables, hclOutputs, hclLocals} from "./store";
 
 export function exportHCL() {
-    let hcl = ''
+    let hcl = '';
     let res;
+    let vars;
+    let outs;
+    let locals;
     resources.subscribe(value => res = value);
+    hclVariables.subscribe(value => vars = value);
+    hclOutputs.subscribe(value => outs = value);
+    hclLocals.subscribe(value => locals = value);
     for (const r of res) {
         let data = r.data()
         let stanzaType;
@@ -62,9 +71,49 @@ export function exportHCL() {
                 }
             }).join('')}
 }
-
 `
     }
+    for (const v of vars) {
+        // {name: "", default: "", type: "", description: "", validation: "", sensitive: false}
+        let out = {...v};
+        delete out.name;
+        hcl += `
+variable ${v.name} {
+`
+        for (const a in out) {
+            if (out[a]) {
+                hcl += `  ${a} = ${out[a]}
+`
+            }
+        }
+        hcl += `}`
+    }
+    for (const o of outs) {
+        // {name: "", value: "", description: "", sensitive: false, depends_on: ""}
+        let out = {...o};
+        delete out.name;
+        hcl += `
+output ${o.name} {
+`
+        for (const a in out) {
+            if (out[a]) {
+                hcl += `  ${a} = ${out[a]}
+`
+            }
+        }
+        hcl += `}`
+    }
+    // locals
+    hcl += `
+locals {
+`
+    for (const l of locals) {
+        if (l.value) {
+            hcl += `  ${l.name} = ${l.value}
+`
+        }
+    }
+    hcl += `}`
     let file = new File([hcl], "terraforge.tf", {
         type: "text/plain",
     });
@@ -80,7 +129,7 @@ export function exportHCL() {
     }, 0);
 }
 
-const resourcePattern = /(?<blockType>data|resource|provider|terraform)\s*(?<resourceType>"\w+")?\s*(?<stanzaName>"\w+")?\s*(?<stanzaConfig>{}|{[\s\S]*?^})/gm;
+const resourcePattern = /(?<blockType>locals|output|variable|data|resource|provider|terraform)\s*(?<resourceType>"\w+")?\s*(?<stanzaName>"\w+")?\s*(?<stanzaConfig>{}|{[\s\S]*?^})/gm;
 const providerPattern = /(?<name>\w+)\s+=\s+{[\s\S]+?source\s+=\s+"(?<fullname>\w+\/\w+)"[\s\S]+?}/gm;
 const linkPattern     = /[^"]\b(\w+(?:\.\w+)+)\b(?:[^"]|$)/gm;
 export function importHCL(f) {
@@ -97,6 +146,7 @@ export function importHCL(f) {
             hclProviderMap[p.groups.name] = p.groups.fullname;
         }
         let res = [...config.matchAll(resourcePattern)];
+        // find all interconnections between stanzas
         for (let i = 0; i < res.length; i++) {
             let links = [...res[i].groups.stanzaConfig.matchAll(linkPattern)];
             let linkMatches = [];
@@ -129,6 +179,7 @@ export function importHCL(f) {
                 }
             }
         }
+        // create resource objects from stanzas
         for (const r of res) {
             let bt = r.groups.blockType;
             if (bt === "terraform") {
@@ -137,6 +188,12 @@ export function importHCL(f) {
                 createProviderBlockResource(r, hclProviderMap);
             } else if (bt === "resource" || bt === "data") {
                 createResourceOrDataBlockResource(r, hclProviderMap);
+            } else if (bt === "variable") {
+                createVariableResource(r);
+            } else if (bt === "output") {
+                createOutputResource(r);
+            } else if (bt === "locals") {
+                addLocalResource(r);
             }
         }
         let cyto;

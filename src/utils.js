@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import {resources, unsaved, editorOn, editNode, cy, providerSchemas} from "./store";
+import {resources, unsaved, editorOn, editNode, cy, providerSchemas, hclVariables, hclOutputs, hclLocals} from "./store";
 import cytoscape from "cytoscape";
 import panzoom from 'cytoscape-panzoom';
 import {options} from "./klay";
@@ -221,7 +221,7 @@ export function createResource(r) {
     cyObj.layout(options).run();
 }
 
-const attributePattern = /(?<block>(?<blockName>\w+) (?<blockConfig>{[\s\S]+?^ {2}}))|(?<attribute>(?<attributeName>\w+)\s+=\s+(?<attributeValue>[\S ]+))/gm;
+const attributePattern = /(?<block>(?<blockName>\w+) (?<blockConfig>{[\s\S]+?^ {2}}))|(?<attribute>(?<attributeName>\w+)\s+=\s+(?<attributeValue>{[\s\S]+?}|[\S ]+))/gm;
 export function createTerraformBlockResource(r) {
     let schemas;
     providerSchemas.subscribe(value => schemas = value);
@@ -294,6 +294,37 @@ export function createProviderBlockResource(r, hclProviderMap) {
     }
     createResource(rr);
 }
+export function createVariableResource(r) {
+    const attr = [...r.groups.stanzaConfig.matchAll(attributePattern)]
+    let v = {name: r.groups.resourceType, default: "", type: "", description: "", validation: "", sensitive: false}
+    for (const a of attr) {
+        if (a.groups.block) {
+            if (a.groups.blockName === "validation") {
+                v.validation = a.groups.blockConfig
+            }
+        } else {
+            v[a.groups.attributeName] = a.groups.attributeValue;
+        }
+    }
+    hclVariables.update(r => [...r, v]);
+}
+export function createOutputResource(r) {
+    const attr = [...r.groups.stanzaConfig.matchAll(attributePattern)]
+    // {name: "", value: "", description: "", sensitive: false, depends_on: ""}
+    let o = {name: r.groups.resourceType, value: "", description: "", sensitive: false, depends_on: ""}
+    for (const a of attr) {
+        o[a.groups.attributeName] = a.groups.attributeValue;
+    }
+    hclOutputs.update(r => [...r, o]);
+}
+
+export function addLocalResource(r) {
+    const attr = [...r.groups.stanzaConfig.matchAll(attributePattern)]
+    for (const a of attr) {
+        hclLocals.update(r => [...r, {name: a.groups.attributeName, value: a.groups.attributeValue}]);
+    }
+}
+
 export function createResourceOrDataBlockResource(r, hclProviderMap) {
     let schemas;
     providerSchemas.subscribe(value => schemas = value);

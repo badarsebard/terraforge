@@ -18,3 +18,6 @@ export let unsaved = writable(false);
 export let editNode = writable();
 export let editorOn = writable(false);
 export let cy = writable();
+export let hclVariables = writable([]);
+export let hclOutputs = writable([]);
+export let hclLocals = writable([]);
