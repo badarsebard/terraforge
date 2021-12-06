@@ -39,12 +39,12 @@ Navigate to [localhost:5000](http://localhost:5000). You should see the app runn
 ### Using the App
 To get started right away use the Wizard under the Providers menu. 
 - Select the Official and AWS checkboxes in the modal and click Submit. ![Providers Modal](images/providers_modal.png)
-- Select the `hashicorp/aws` provider from the dropdown on the right and choose either resource or data source radio buttons. ![](images/provider_selection.png) 
+- Select the `hashicorp/aws` provider from the dropdown on the right and choose either resource or data source radio buttons.                 ![](images/provider_selection.png) 
 - Double-click an entry to add a node of that type to the graph in the center of the page. ![Create Rsource](images/create_resource.png)
 - Click a node to open a pane on the left-hand side of the window where the name and attributes of the node can be 
 modified. ![Edit Node](images/edit_resource.png)
 - References between nodes can be made by entering `$type.name.attributes` in the attribute; e.g.`$aws_lb.front_end.arn`. ![Create Edge](images/create_edge.png)
-- After creating and editing some resources, export the Terraform configuration by using Export in the HCL menu. ![Export HCL](images/export_hcl.png)
+- After creating and editing some resources, export the Terraform configuration by using Export in the HCL menu.                         ![Export HCL](images/export_hcl.png)
 - The browser will download a file called `terraforge.tf` which will contain the Terraform configuration represented by the diagram and based on the configurations entered.
 ```terraform
 resource "aws_lb" "front_end" {}
